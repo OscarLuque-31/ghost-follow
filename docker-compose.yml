@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  # 1. Zookeeper: Gestiona la coordinación y el estado de Kafka.
+  # Es un requisito tradicional para Kafka.
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.0.1
+    container_name: zookeeper
+    ports:
+      - "2181:2181" # Puerto de acceso a Zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+
+  # 2. Kafka Broker: El bus de mensajes asíncrono.
+  kafka:
+    image: confluentinc/cp-kafka:7.0.1
+    container_name: kafka-broker
+    ports:
+      - "9092:9092" # Puerto clave: usado por tus microservicios
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181 # Se conecta al servicio 'zookeeper'
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092 # Cómo accederá el mundo exterior (tus microservicios)
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    depends_on:
+      - zookeeper # Asegura que Zookeeper inicie primero
+
+  # 3. PostgreSQL Database: La base de datos para el Processor Service.
+  postgres-db:
+    image: postgres:14-alpine
+    container_name: postgres-db
+    ports:
+      - "5432:5432" # Puerto clave: usado por el Processor Service (JPA)
+    environment:
+      POSTGRES_USER: springuser         # Usuario para la conexión
+      POSTGRES_PASSWORD: springpassword # Contraseña para la conexión
+      POSTGRES_DB: processor_db         # Nombre de la base de datos
+    volumes:
+      - postgres-data:/var/lib/postgresql/data # Persistencia de datos
+    healthcheck: # Una comprobación para saber si está listo para recibir conexiones
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data: # Define el volumen para guardar los datos de PostgreSQL de forma persistente
