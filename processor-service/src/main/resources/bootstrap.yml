@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: processor-service
+  cloud:
+    config:
+      # Config Server (puerto 8888)
+      uri: http://localhost:8888

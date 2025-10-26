@@ -1,0 +1,44 @@
+server:
+  port: 8082 # Puerto único para este servicio
+
+spring:
+  application:
+    name: processor-service # Clave para Eureka
+  config:
+    import: configserver:http://localhost:8888
+
+  # Configuración de Base de Datos (JPA/Hibernate)
+  datasource:
+    url: jdbc:postgresql://localhost:5433/processor_db
+    username: springuser
+    password: springpassword
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # Configuración de Kafka (Consumidor y Productor)
+  kafka:
+    producer:
+      bootstrap-servers: localhost:9092 # Para enviar eventos de cambio
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      bootstrap-servers: localhost:9092
+      group-id: processor-group # ID de grupo de consumidor
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*" # Necesario para deserializar el JSON que viene del Collector
+
+# Configuración de Cliente Eureka
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/

@@ -30,7 +30,7 @@ services:
     image: postgres:14-alpine
     container_name: postgres-db
     ports:
-      - "5432:5432" # Puerto clave: usado por el Processor Service (JPA)
+      - "5433:5432" # Puerto clave: usado por el Processor Service (JPA)
     environment:
       POSTGRES_USER: springuser         # Usuario para la conexión
       POSTGRES_PASSWORD: springpassword # Contraseña para la conexión

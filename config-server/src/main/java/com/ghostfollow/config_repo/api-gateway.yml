@@ -1,0 +1,32 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        # --- Ruta para el servicio Collector ---
+      - id: collector-route
+        # Busca el servicio registrado en Eureka con este nombre:
+        uri: lb://COLLECTOR-SERVICE
+        # lb:// significa 'Load Balancer' y usa Eureka
+          # Bloque de Predicates (Captura la ruta que entra)
+        predicates:
+            - Path=/api/collector/** # Captura la URL: /api/collector/trigger
+
+          # Bloque de Filters (Aplica la transformación)
+        filters:
+            # Filtro para reescribir:
+            # 1. Busca: /api/collector/ y guarda el resto (trigger) en 'segment'
+            # 2. Reemplaza: con /trigger
+            - RewritePath=/api/collector/(?<segment>.*), /${segment}
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+
+
+
