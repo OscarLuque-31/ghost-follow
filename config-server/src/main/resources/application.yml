@@ -6,5 +6,5 @@ spring:
     config:
       server:
         git:
-          uri: https://github.com/OscarLuque-31/ghost-follow
+          uri: https://github.com/OscarLuque-31/ghost-follow/tree/main/config-server/src/main/java/com/ghostfollow/config_repo
           default-label: main

@@ -1,7 +1,6 @@
 spring:
   application:
     name: processor-service
-  cloud:
-    config:
-      # Config Server (puerto 8888)
-      uri: http://localhost:8888
+  config:
+    # URL del Config Server (8888)
+    import: configserver:http://localhost:8888
