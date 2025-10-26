@@ -6,5 +6,8 @@ spring:
     config:
       server:
         git:
-          uri: https://github.com/OscarLuque-31/ghost-follow/tree/main/config-server/src/main/java/com/ghostfollow/config_repo
+          uri: https://github.com/OscarLuque-31/ghost-follow
+          search-paths: config-files/
           default-label: main
+          clone-on-start: true
+          timeout: 5

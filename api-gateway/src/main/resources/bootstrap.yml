@@ -3,7 +3,3 @@ spring:
     name: api-gateway
   config:
     import: configserver:http://localhost:8888
-  cloud:
-    config:
-      import-check:
-        enabled: false
