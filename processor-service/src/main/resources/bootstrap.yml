@@ -4,3 +4,7 @@ spring:
   config:
     # URL del Config Server (8888)
     import: configserver:http://localhost:8888
+  cloud:
+    config:
+      import-check:
+        enabled: false
