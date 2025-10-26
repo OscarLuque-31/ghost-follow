@@ -7,7 +7,6 @@ spring:
       server:
         git:
           uri: https://github.com/OscarLuque-31/ghost-follow
-          search-paths: config-files/
           default-label: main
           clone-on-start: true
           timeout: 5

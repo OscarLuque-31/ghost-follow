@@ -3,4 +3,4 @@ spring:
     name: processor-service
   config:
     # URL del Config Server (8888)
-    import: configserver:http://localhost:8888
+    import: optional:configserver:http://localhost:8888
