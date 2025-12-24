@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # ----------------------------------------
+  # 1. BASE DE DATOS: PostgreSQL
+  # ----------------------------------------
+  postgres_db:
+    image: postgres:16-alpine
+    container_name: ghostfollow_postgres
+    restart: always
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  #   ----------------------------------------
+  #   2. APLICACIÓN MONOLÍTICA
+  #   ----------------------------------------
+  ghostfollow_core:
+    build: .
+    container_name: ghostfollow_core
+    ports:
+     - "8080:8080"
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+
+    volumes:
+      - ./.env:/app/.env
+
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres_db:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+
+    restart: always
+
+volumes:
+  postgres_data:
