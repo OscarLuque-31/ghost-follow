@@ -3,7 +3,9 @@ package com.oscarluque.ghostfollowcore.web;
 import com.oscarluque.ghostfollowcore.config.security.JwtService;
 import com.oscarluque.ghostfollowcore.dto.auth.AuthRequest;
 import com.oscarluque.ghostfollowcore.dto.auth.AuthResponse;
+import com.oscarluque.ghostfollowcore.persistence.entity.MonitoredAccount;
 import com.oscarluque.ghostfollowcore.persistence.entity.User;
+import com.oscarluque.ghostfollowcore.persistence.repository.AccountRepository;
 import com.oscarluque.ghostfollowcore.persistence.repository.UserRepository;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -23,6 +25,7 @@ public class AuthController {
 
 
     private final UserRepository userRepository;
+    private final AccountRepository accountRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
@@ -58,10 +61,10 @@ public class AuthController {
     public ResponseEntity<String> getCurrentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
-        User user = userRepository.findByEmail(email)
+        MonitoredAccount monitoredAccount = accountRepository.findByUserEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
 
-        return ResponseEntity.ok(user.getUsername());
+        return ResponseEntity.ok(monitoredAccount.getInstagramAccountName());
     }
 
 }
