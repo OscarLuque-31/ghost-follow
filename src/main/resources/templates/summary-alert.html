@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Resumen GhostFollow</title>
+    <style>
+        body { font-family: 'Segoe UI', Helvetica, Arial, sans-serif; background-color: #fdf2f8; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+        table { border-collapse: collapse; width: 100%; }
+
+        /* CONTENEDOR PRINCIPAL (CARD) */
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background-color: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            border: 1px solid #fce4ec;
+        }
+
+        /* CABECERA ROSA */
+        .header {
+            background: linear-gradient(135deg, #e91e63 0%, #9c27b0 100%);
+            background-color: #e91e63; /* Fallback */
+            color: #ffffff;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+        .header-icon { font-size: 32px; display: block; margin-bottom: 10px; }
+
+        /* CUERPO */
+        .content { padding: 30px; color: #334155; line-height: 1.6; }
+        .greeting { font-size: 16px; margin-bottom: 20px; }
+
+        /* SECCIONES DE LISTAS */
+        .section-title { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-top: 25px; margin-bottom: 10px; }
+
+        /* CAJA ROJA (UNFOLLOWS) */
+        .box-lost { background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 15px; }
+        .title-lost { color: #ef4444; }
+
+        /* CAJA VERDE (NEW) */
+        .box-new { background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 15px; }
+        .title-new { color: #10b981; }
+
+        /* LISTAS DE USUARIOS */
+        ul { margin: 0; padding: 0; list-style: none; }
+        li {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+        }
+        li:last-child { border-bottom: none; }
+
+        .username { text-decoration: none; color: #1e293b; }
+        .username:hover { text-decoration: underline; }
+
+        /* BOTÓN DE ACCIÓN */
+        .btn-container { text-align: center; margin-top: 30px; }
+        .btn {
+            display: inline-block;
+            background-color: #e91e63;
+            color: #ffffff !important;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 16px;
+            box-shadow: 0 4px 6px rgba(233, 30, 99, 0.2);
+        }
+
+        .footer { background-color: #fdf2f8; text-align: center; padding: 20px; font-size: 12px; color: #94a3b8; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <span class="header-icon">👻</span>
+        <h1>GhostFollow</h1>
+    </div>
+
+    <div class="content">
+        <p class="greeting">Hola,</p>
+        <p>Aquí tienes el resultado del análisis de hoy (<span th:text="${date}">Fecha</span>) para la cuenta <strong>@<span th:text="${accountName}">Usuario</span></strong>.</p>
+
+        <div th:if="${not #lists.isEmpty(lostList)}">
+            <div class="section-title title-lost">📉 Han dejado de seguirte (<span th:text="${#lists.size(lostList)}">0</span>)</div>
+            <div class="box-lost">
+                <ul>
+                    <li th:each="user : ${lostList}">
+                        <a th:href="'https://instagram.com/' + ${user}" class="username" th:text="'@' + ${user}">@usuario</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div th:if="${not #lists.isEmpty(gainedList)}">
+            <div class="section-title title-new">✨ Nuevos seguidores (<span th:text="${#lists.size(gainedList)}">0</span>)</div>
+            <div class="box-new">
+                <ul>
+                    <li th:each="user : ${gainedList}">
+                        <a th:href="'https://instagram.com/' + ${user}" class="username" th:text="'@' + ${user}">@usuario</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="btn-container">
+            <a href="http://localhost:5173/dashboard" class="btn">Ver análisis completo</a>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Enviado automáticamente por GhostFollow 👻</p>
+        <p>No respondas a este correo.</p>
+    </div>
+</div>
+
+</body>
+</html>

@@ -1,11 +1,12 @@
 package com.oscarluque.ghostfollowcore.service;
 
 import com.oscarluque.ghostfollowcore.constants.EventType;
+import com.oscarluque.ghostfollowcore.dto.response.AnalysisResponse;
+import com.oscarluque.ghostfollowcore.dto.response.Stats;
 import com.oscarluque.ghostfollowcore.persistence.entity.MonitoredAccount;
 import com.oscarluque.ghostfollowcore.persistence.entity.FollowerDetail;
 import com.oscarluque.ghostfollowcore.persistence.entity.FollowerId;
 import com.oscarluque.ghostfollowcore.persistence.repository.AccountRepository;
-import com.oscarluque.ghostfollowcore.dto.follower.FollowerChangeEvent;
 import com.oscarluque.ghostfollowcore.dto.follower.InstagramProfile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,9 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,74 +30,82 @@ public class FollowerChangeDetectionService {
     @Autowired
     private EmailAlertService emailAlert;
 
-    /**
-     * @Async: Ejecuta este método en un hilo separado.
-     * El Controller responde "202 Accepted" y esto sigue trabajando.
-     */
-    @Async("taskExecutor")
-    @Transactional
-    public void processNewFollowerList(List<InstagramProfile> currentFollowers, String accountName, String userEmail) {
 
-        List<String> newFollowerUsernames = currentFollowers.stream()
+    @Transactional
+    public AnalysisResponse processNewFollowerList(List<InstagramProfile> currentFollowers, String accountName, String userEmail) {
+
+        // Step 1: Prepare the new list of usernames
+        List<String> newUsernames = currentFollowers.stream()
                 .map(InstagramProfile::getValue)
                 .collect(Collectors.toList());
 
-        repository.findByUserEmail(userEmail).ifPresentOrElse(
-                (previousState) -> {
-                    List<String> oldFollowerUsernames = extractUsernames(previousState.getFollowerDetails());
+        // Step 2: Search the old state in bbdd
+        Optional<MonitoredAccount> accountOpt = repository.findByUserEmail(userEmail);
 
-                    detectAndPublishChanges(oldFollowerUsernames, newFollowerUsernames, accountName, userEmail);
+        List<String> oldUsernames = new ArrayList<>();
+        List<String> gainedFollowers = new ArrayList<>();
+        List<String> lostFollowers = new ArrayList<>();
 
-                    List<FollowerDetail> newDetails = convertToFollowersDetails(currentFollowers, previousState.getAccountId(), previousState);
+        MonitoredAccount accountToSave;
 
-                    previousState.getFollowerDetails().clear();
-                    previousState.getFollowerDetails().addAll(newDetails);
-                    previousState.setLastUpdated(LocalDateTime.now());
-                    repository.save(previousState);
+        if (accountOpt.isPresent()) {
+            accountToSave = accountOpt.get();
+            oldUsernames = extractUsernames(accountToSave.getFollowerDetails());
 
-                    LOGGER.info("Estado de la cuenta {} actualizado.", accountName);
-                },
-                () -> {
-                    MonitoredAccount newState = new MonitoredAccount();
-                    newState.setInstagramAccountName(accountName);
-                    newState.setUserEmail(userEmail);
+            Set<String> oldSet = new HashSet<>(oldUsernames);
+            Set<String> newSet = new HashSet<>(newUsernames);
 
-                    MonitoredAccount savedState = repository.save(newState);
-                    Integer generatedAccountId = savedState.getAccountId();
-
-                    List<FollowerDetail> newDetails = convertToFollowersDetails(currentFollowers, generatedAccountId, newState);
-
-                    newState.setFollowerDetails(newDetails);
-                    newState.setLastUpdated(LocalDateTime.now());
-
-                    repository.save(newState);
-                    LOGGER.info("Estado inicial de la cuenta {} guardado.", accountName);
+            // UNFOLLOWERS
+            for (String user : oldSet) {
+                if (!newSet.contains(user)) {
+                    lostFollowers.add(user);
                 }
-        );
-    }
+            }
 
-    private void detectAndPublishChanges(List<String> oldFollowers, List<String> newFollowers, String accountName, String userEmail){
-        Set<String> oldSetFollowers = new HashSet<>(oldFollowers);
-        Set<String> newSetFollowers = new HashSet<>(newFollowers);
+            // NEW FOLLOWERS
+            for (String user : newSet) {
+                if (!oldSet.contains(user)) {
+                    gainedFollowers.add(user);
+                }
+            }
 
-        Set<String> unfollowed = new HashSet<>(oldSetFollowers);
-        unfollowed.removeAll(newSetFollowers);
+            LOGGER.info("Cuenta {}: Perdidos {}, Ganados {}", accountName, lostFollowers.size(), gainedFollowers.size());
 
-        unfollowed.forEach(user -> {
-            FollowerChangeEvent event = createEvent(accountName, userEmail , EventType.UNFOLLOWED.name(), user);
-            emailAlert.sendUnFollowAlert(event);
-            LOGGER.info("UNFOLLOW detectado: {}. Alerta enviada.", user);
-        });
-    }
+            List<FollowerDetail> newDetailsEntities = convertToFollowersDetails(currentFollowers, accountToSave.getAccountId(), accountToSave);
 
-    private FollowerChangeEvent createEvent(String accountName, String userEmail, String eventType, String targetUser) {
-        FollowerChangeEvent followerChangeEvent = new FollowerChangeEvent();
-        followerChangeEvent.setAccountName(accountName);
-        followerChangeEvent.setUserEmail(userEmail);
-        followerChangeEvent.setEventType(eventType);
-        followerChangeEvent.setTargetUser(targetUser);
-        followerChangeEvent.setLocalDateTime(LocalDateTime.now());
-        return followerChangeEvent;
+            accountToSave.getFollowerDetails().clear();
+            accountToSave.getFollowerDetails().addAll(newDetailsEntities);
+            accountToSave.setLastUpdated(LocalDateTime.now());
+        } else {
+            LOGGER.info("Cuenta nueva detectada: {}. Creando registro inicial.", accountName);
+
+            MonitoredAccount newAccount = new MonitoredAccount();
+            newAccount.setInstagramAccountName(accountName);
+            newAccount.setUserEmail(userEmail);
+
+            // Guardamos primero para generar el ID
+            accountToSave = repository.save(newAccount);
+
+            List<FollowerDetail> initialDetails = convertToFollowersDetails(currentFollowers, accountToSave.getAccountId(), accountToSave);
+            newAccount.setFollowerDetails(initialDetails);
+            newAccount.setLastUpdated(LocalDateTime.now());
+        }
+
+        repository.save(accountToSave);
+
+        if (!lostFollowers.isEmpty() || !gainedFollowers.isEmpty()) {
+            emailAlert.sendSummaryEmail(userEmail, accountName, lostFollowers, gainedFollowers);
+        }
+
+        return AnalysisResponse.builder()
+                .stats(Stats.builder()
+                        .totalFollowers(newUsernames.size())
+                        .gainedCount(gainedFollowers.size())
+                        .lostCount(lostFollowers.size())
+                        .build())
+                .newFollowers(gainedFollowers)
+                .lostFollowers(lostFollowers)
+                .build();
     }
 
     private List<String> extractUsernames(List<FollowerDetail> followerDetails) {

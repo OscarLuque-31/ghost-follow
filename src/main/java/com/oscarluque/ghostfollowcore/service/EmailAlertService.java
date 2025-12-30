@@ -1,6 +1,5 @@
 package com.oscarluque.ghostfollowcore.service;
 
-import com.oscarluque.ghostfollowcore.dto.follower.FollowerChangeEvent;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
@@ -13,7 +12,9 @@ import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 @Service
 public class EmailAlertService {
@@ -29,28 +30,42 @@ public class EmailAlertService {
     @Value("${MAIL_USERNAME}")
     private String senderEmail;
 
-    public void sendUnFollowAlert(FollowerChangeEvent event) {
+    public void sendSummaryEmail(String to, String accountName, List<String> lostFollowers, List<String> newFollowers) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            helper.setTo(event.getUserEmail());
-            helper.setSubject("👻 Alerta GhostFollow: " + event.getTargetUser() + " te ha dejado de seguir");
+            helper.setTo(to);
+            helper.setFrom(senderEmail);
+
+            String subject = generateSubject(accountName, lostFollowers.size(), newFollowers.size());
+            helper.setSubject(subject);
 
             Context context = new Context();
-            context.setVariable("accountName", event.getAccountName());
-            context.setVariable("targetUser", event.getTargetUser());
-            context.setVariable("date", event.getLocalDateTime().format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm")));
+            context.setVariable("accountName", accountName);
+            context.setVariable("lostList", lostFollowers);
+            context.setVariable("gainedList", newFollowers);
+            context.setVariable("date", LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
 
-            String htmlContent = templateEngine.process("unfollow-alert", context);
+            String htmlContent = templateEngine.process("summary-alert", context);
 
             helper.setText(htmlContent, true);
 
             mailSender.send(message);
-            LOGGER.info("Email HTML enviado a {}",  event.getUserEmail());
+            LOGGER.info("Email de RESUMEN enviado a {}", to);
 
         } catch (MessagingException e) {
-            LOGGER.error("Error enviando email: {}", e.getMessage());
+            LOGGER.error("Error enviando email de resumen: {}", e.getMessage());
+        }
+    }
+
+    private String generateSubject(String account, int lost, int gained) {
+        if (lost > 0 && gained > 0) {
+            return String.format("📊 Resumen GhostFollow: -%d perdidos y +%d nuevos en %s", lost, gained, account);
+        } else if (lost > 0) {
+            return String.format("📉 Alerta: %d personas han dejado de seguir a %s", lost, account);
+        } else {
+            return String.format("✨ Buenas noticias: %d nuevos seguidores en %s", gained, account);
         }
     }
 }

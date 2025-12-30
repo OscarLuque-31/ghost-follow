@@ -2,6 +2,7 @@ package com.oscarluque.ghostfollowcore.web;
 
 import com.oscarluque.ghostfollowcore.dto.follower.InstagramProfile;
 import com.oscarluque.ghostfollowcore.dto.follower.FollowerWrapper;
+import com.oscarluque.ghostfollowcore.dto.response.AnalysisResponse;
 import com.oscarluque.ghostfollowcore.service.FollowerChangeDetectionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -19,7 +20,7 @@ public class FollowerUploadController {
     private FollowerChangeDetectionService detectionService;
 
     @PostMapping("/upload")
-    public ResponseEntity<String> uploadList(@RequestBody List<FollowerWrapper> containerList, @RequestParam String accountName) {
+    public ResponseEntity<AnalysisResponse> uploadList(@RequestBody List<FollowerWrapper> containerList, @RequestParam String accountName) {
 
         List<InstagramProfile> allFollowers = new ArrayList<>();
 
@@ -32,15 +33,14 @@ public class FollowerUploadController {
         }
 
         if (allFollowers.isEmpty()) {
-            return ResponseEntity.badRequest().body("La lista de seguidores está vacía o el formato es incorrecto.");
+            return ResponseEntity.badRequest().body(AnalysisResponse.builder().build());
         }
 
         String authenticatedEmail = SecurityContextHolder.getContext().getAuthentication().getName();
 
-        detectionService.processNewFollowerList(allFollowers, accountName, authenticatedEmail);
+        AnalysisResponse analysisResponse = detectionService.processNewFollowerList(allFollowers, accountName, authenticatedEmail);
 
-        return ResponseEntity.accepted().body("Lista recibida. Procesando cambios en segundo plano...");
+        return ResponseEntity.accepted().body(analysisResponse);
     }
-
 
 }
