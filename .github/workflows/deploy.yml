@@ -78,8 +78,8 @@ jobs:
               -e MAIL_USERNAME='${{ secrets.MAIL_USERNAME }}' \
               -e MAIL_PASSWORD='${{ secrets.MAIL_PASSWORD }}' \
               -e DB_URL='${{ secrets.DB_URL }}' \
-              -e DB_USER='${{ secrets.DB_USER }}' \
-              -e DB_PASS='${{ secrets.DB_PASS }}' \
+              -e POSTGRES_USER='${{ secrets.DB_USER }}' \
+              -e POSTGRES_PASSWORD='${{ secrets.DB_PASS }}' \
               -e JWT_SECRET='${{ secrets.JWT_SECRET }}' \
               --add-host=host.docker.internal:host-gateway \
               ghcr.io/$REPO_LOWER:latest
