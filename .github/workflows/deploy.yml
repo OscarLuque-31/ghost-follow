@@ -80,5 +80,6 @@ jobs:
               -e DB_URL='jdbc:postgresql://host.docker.internal:5433/ghostfollow_db' \
               -e DB_USER='${{ secrets.DB_USER }}' \
               -e DB_PASS='${{ secrets.DB_PASS }}' \
+              -e JWT_SECRET='${{ secrets.JWT_SECRET }}' \
               --add-host=host.docker.internal:host-gateway \
               ghcr.io/$REPO_LOWER:latest
