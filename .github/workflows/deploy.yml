@@ -77,7 +77,7 @@ jobs:
               -p 8080:8080 \
               -e MAIL_USERNAME='${{ secrets.MAIL_USERNAME }}' \
               -e MAIL_PASSWORD='${{ secrets.MAIL_PASSWORD }}' \
-              -e DB_URL='jdbc:postgresql://host.docker.internal:5433/ghostfollow_db' \
+              -e DB_URL='${{ secrets.DB_URL }}' \
               -e DB_USER='${{ secrets.DB_USER }}' \
               -e DB_PASS='${{ secrets.DB_PASS }}' \
               -e JWT_SECRET='${{ secrets.JWT_SECRET }}' \
