@@ -1,0 +1,84 @@
+name: Deploy Backend to VPS
+
+on:
+  push:
+    branches: [ "main" ] # Se ejecuta al hacer push a la rama main
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # 1. Bajar el código
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Configurar Java
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      # 3. Login en GitHub Container Registry
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 4. Extraer metadatos y asegurar minúsculas para la imagen
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: type=raw,value=latest
+
+      # 5. Construir la imagen y subirla a GitHub
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      # 6. Conectarse al VPS y desplegar
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # A. Login en Docker dentro del VPS
+            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
+            echo "Deteniendo contenedor antiguo..."
+            docker stop ghostfollow_core || true
+            docker rm ghostfollow_core || true
+            
+            REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+            docker pull ghcr.io/$REPO_LOWER:latest
+            
+            echo "Arrancando nuevo contenedor..."
+            docker run -d \
+              --name ghostfollow_core \
+              --restart unless-stopped \
+              -p 8080:8080 \
+              -e MAIL_USERNAME='${{ secrets.MAIL_USERNAME }}' \
+              -e MAIL_PASSWORD='${{ secrets.MAIL_PASSWORD }}' \
+              -e DB_URL='jdbc:postgresql://host.docker.internal:5433/ghostfollow_db' \
+              -e DB_USER='${{ secrets.DB_USER }}' \
+              -e DB_PASS='${{ secrets.DB_PASS }}' \
+              --add-host=host.docker.internal:host-gateway \
+              ghcr.io/$REPO_LOWER:latest
