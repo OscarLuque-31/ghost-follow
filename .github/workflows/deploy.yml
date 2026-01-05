@@ -80,6 +80,7 @@ jobs:
               -e DB_URL='${{ secrets.DB_URL }}' \
               -e POSTGRES_USER='${{ secrets.DB_USER }}' \
               -e POSTGRES_PASSWORD='${{ secrets.DB_PASS }}' \
+              -e CORS_ALLOWED_ORIGINS='${{ secrets.CORS_ALLOWED_ORIGINS }}' \
               -e JWT_SECRET='${{ secrets.JWT_SECRET }}' \
               --add-host=host.docker.internal:host-gateway \
               ghcr.io/$REPO_LOWER:latest
