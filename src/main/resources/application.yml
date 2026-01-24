@@ -6,6 +6,11 @@ spring:
   application:
     name: GhostFollowCore
 
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+
   # ----------------------------------------
   # 1. CONFIGURACIÓN DE BASE DE DATOS
   # ----------------------------------------
