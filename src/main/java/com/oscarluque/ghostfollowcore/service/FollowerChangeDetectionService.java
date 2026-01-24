@@ -1,135 +1,90 @@
 package com.oscarluque.ghostfollowcore.service;
 
-import com.oscarluque.ghostfollowcore.constants.EventType;
-import com.oscarluque.ghostfollowcore.dto.response.AnalysisResponse;
-import com.oscarluque.ghostfollowcore.dto.response.Stats;
-import com.oscarluque.ghostfollowcore.persistence.entity.MonitoredAccount;
-import com.oscarluque.ghostfollowcore.persistence.entity.FollowerDetail;
-import com.oscarluque.ghostfollowcore.persistence.entity.FollowerId;
-import com.oscarluque.ghostfollowcore.persistence.repository.AccountRepository;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.oscarluque.ghostfollowcore.dto.follower.FollowerWrapper;
 import com.oscarluque.ghostfollowcore.dto.follower.InstagramProfile;
+import com.oscarluque.ghostfollowcore.dto.response.AnalysisResponse;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 @Service
+@RequiredArgsConstructor
 public class FollowerChangeDetectionService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FollowerChangeDetectionService.class);
 
-    @Autowired
-    private AccountRepository repository;
+    private final ObjectMapper objectMapper;
+    private final FollowerAnalysisService followerAnalysisService;
 
-    @Autowired
-    private EmailAlertService emailAlert;
+    public AnalysisResponse processFollowerFile(MultipartFile file, String accountName, String userEmail) throws IOException {
+        LOGGER.info("Iniciando procesamiento de archivo ZIP para la cuenta: {} (Usuario: {})", accountName, userEmail);
 
+        String jsonContent = processZipFileToJson(file);
 
-    @Transactional
-    public AnalysisResponse processNewFollowerList(List<InstagramProfile> currentFollowers, String accountName, String userEmail) {
+        List<FollowerWrapper> containerList = objectMapper.readValue(jsonContent, new TypeReference<>() {});
 
-        // Step 1: Prepare the new list of usernames
-        List<String> newUsernames = currentFollowers.stream()
-                .map(InstagramProfile::getValue)
-                .collect(Collectors.toList());
-
-        // Step 2: Search the old state in bbdd
-        Optional<MonitoredAccount> accountOpt = repository.findByUserEmail(userEmail);
-
-        List<String> oldUsernames = new ArrayList<>();
-        List<String> gainedFollowers = new ArrayList<>();
-        List<String> lostFollowers = new ArrayList<>();
-
-        MonitoredAccount accountToSave;
-
-        if (accountOpt.isPresent()) {
-            accountToSave = accountOpt.get();
-            oldUsernames = extractUsernames(accountToSave.getFollowerDetails());
-
-            Set<String> oldSet = new HashSet<>(oldUsernames);
-            Set<String> newSet = new HashSet<>(newUsernames);
-
-            // UNFOLLOWERS
-            for (String user : oldSet) {
-                if (!newSet.contains(user)) {
-                    lostFollowers.add(user);
+        List<InstagramProfile> allFollowers = new ArrayList<>();
+        if (containerList != null) {
+            for (FollowerWrapper wrapper : containerList) {
+                if (wrapper.getFollowerEntryList() != null) {
+                    allFollowers.addAll(wrapper.getFollowerEntryList());
                 }
             }
+        }
 
-            // NEW FOLLOWERS
-            for (String user : newSet) {
-                if (!oldSet.contains(user)) {
-                    gainedFollowers.add(user);
+        LOGGER.info("Se han extraído {} seguidores del archivo JSON para la cuenta {}", allFollowers.size(), accountName);
+
+        if (allFollowers.isEmpty()) {
+            LOGGER.warn("El archivo procesado no contenía seguidores válidos para la cuenta {}", accountName);
+            throw new IllegalArgumentException("El archivo JSON no contiene seguidores o tiene un formato incorrecto.");
+        }
+
+        return followerAnalysisService.processNewFollowerList(allFollowers, accountName, userEmail);
+    }
+
+    private String processZipFileToJson(MultipartFile file) throws IOException {
+        String fileName = file.getOriginalFilename();
+
+        if (fileName == null || !fileName.toLowerCase().endsWith(".zip")) {
+            LOGGER.error("Intento de subida con archivo incorrecto (no es ZIP): {}", fileName);
+            throw new IllegalArgumentException("El archivo debe ser un .zip");
+        }
+
+        try (ZipInputStream zipInputStream = new ZipInputStream(file.getInputStream())) {
+            ZipEntry zipEntry;
+
+            while ((zipEntry = zipInputStream.getNextEntry()) != null) {
+                if (zipEntry.getName().endsWith("followers_1.json")) {
+
+                    // LOG 5: Debug (opcional, útil para desarrollo)
+                    LOGGER.debug("Archivo 'followers_1.json' encontrado dentro del ZIP.");
+
+                    StringBuilder content = new StringBuilder();
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(zipInputStream, StandardCharsets.UTF_8));
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        content.append(line);
+                    }
+
+                    return content.toString();
                 }
             }
-
-            LOGGER.info("Cuenta {}: Perdidos {}, Ganados {}", accountName, lostFollowers.size(), gainedFollowers.size());
-
-            List<FollowerDetail> newDetailsEntities = convertToFollowersDetails(currentFollowers, accountToSave.getAccountId(), accountToSave);
-
-            accountToSave.getFollowerDetails().clear();
-            accountToSave.getFollowerDetails().addAll(newDetailsEntities);
-            accountToSave.setLastUpdated(LocalDateTime.now());
-        } else {
-            LOGGER.info("Cuenta nueva detectada: {}. Creando registro inicial.", accountName);
-
-            MonitoredAccount newAccount = new MonitoredAccount();
-            newAccount.setInstagramAccountName(accountName);
-            newAccount.setUserEmail(userEmail);
-
-            // Guardamos primero para generar el ID
-            accountToSave = repository.save(newAccount);
-
-            List<FollowerDetail> initialDetails = convertToFollowersDetails(currentFollowers, accountToSave.getAccountId(), accountToSave);
-            newAccount.setFollowerDetails(initialDetails);
-            newAccount.setLastUpdated(LocalDateTime.now());
         }
 
-        repository.save(accountToSave);
-
-        if (!lostFollowers.isEmpty() || !gainedFollowers.isEmpty()) {
-            emailAlert.sendSummaryEmail(userEmail, accountName, lostFollowers, gainedFollowers);
-        }
-
-        return AnalysisResponse.builder()
-                .stats(Stats.builder()
-                        .totalFollowers(newUsernames.size())
-                        .gainedCount(gainedFollowers.size())
-                        .lostCount(lostFollowers.size())
-                        .build())
-                .newFollowers(gainedFollowers)
-                .lostFollowers(lostFollowers)
-                .build();
-    }
-
-    private List<String> extractUsernames(List<FollowerDetail> followerDetails) {
-        if (followerDetails == null) return List.of();
-        return followerDetails.stream()
-                .map(detail -> detail.getId().getFollowerUsername())
-                .collect(Collectors.toList());
-    }
-
-    private List<FollowerDetail> convertToFollowersDetails(List<InstagramProfile> entries, Integer accountPkId, MonitoredAccount state) {
-        return entries.stream()
-                .map(entry -> {
-                    FollowerDetail detail = new FollowerDetail();
-                    FollowerId followerId = new FollowerId();
-                    followerId.setAccountId(accountPkId);
-                    followerId.setFollowerUsername(entry.getValue());
-                    detail.setId(followerId);
-
-                    detail.setFollowerProfileUrl(entry.getHref());
-                    detail.setLastUpdate(LocalDateTime.ofEpochSecond(entry.getTimestamp(), 0, java.time.ZoneOffset.UTC));
-                    detail.setAccountState(state);
-                    return detail;
-                })
-                .collect(Collectors.toList());
+        LOGGER.error("El archivo ZIP {} no contiene 'followers_1.json'", fileName);
+        throw new IllegalArgumentException("El ZIP no contiene el archivo 'followers_1.json'. Asegúrate de haber descargado los datos correctos de Instagram.");
     }
 }
-

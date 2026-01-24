@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,27 +21,19 @@ public class FollowerUploadController {
     private FollowerChangeDetectionService detectionService;
 
     @PostMapping("/upload")
-    public ResponseEntity<AnalysisResponse> uploadList(@RequestBody List<FollowerWrapper> containerList, @RequestParam String accountName) {
+    public ResponseEntity<?> uploadList(@RequestBody MultipartFile file, @RequestParam String accountName) {
+        try {
+            String authenticatedEmail = SecurityContextHolder.getContext().getAuthentication().getName();
 
-        List<InstagramProfile> allFollowers = new ArrayList<>();
+            AnalysisResponse analysisResponse = detectionService.processFollowerFile(file, accountName, authenticatedEmail);
 
-        if (containerList != null) {
-            for (FollowerWrapper container : containerList) {
-                if (container.getFollowerEntryList() != null) {
-                    allFollowers.addAll(container.getFollowerEntryList());
-                }
-            }
+            return ResponseEntity.ok(analysisResponse);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body("Error interno procesando el archivo.");
         }
-
-        if (allFollowers.isEmpty()) {
-            return ResponseEntity.badRequest().body(AnalysisResponse.builder().build());
-        }
-
-        String authenticatedEmail = SecurityContextHolder.getContext().getAuthentication().getName();
-
-        AnalysisResponse analysisResponse = detectionService.processNewFollowerList(allFollowers, accountName, authenticatedEmail);
-
-        return ResponseEntity.accepted().body(analysisResponse);
     }
 
 }
