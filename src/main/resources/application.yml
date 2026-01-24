@@ -28,7 +28,7 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         jdbc:
-          batch_size: 100
+          batch_size: 500
           order_inserts: true
           order_updates: true
 
