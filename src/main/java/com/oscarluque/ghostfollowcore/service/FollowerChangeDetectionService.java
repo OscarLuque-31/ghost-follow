@@ -34,7 +34,8 @@ public class FollowerChangeDetectionService {
 
         String jsonContent = processZipFileToJson(file);
 
-        List<FollowerWrapper> containerList = objectMapper.readValue(jsonContent, new TypeReference<>() {});
+        List<FollowerWrapper> containerList = objectMapper.readValue(jsonContent, new TypeReference<>() {
+        });
 
         List<InstagramProfile> allFollowers = new ArrayList<>();
         if (containerList != null) {
@@ -56,35 +57,35 @@ public class FollowerChangeDetectionService {
     }
 
     private String processZipFileToJson(MultipartFile file) throws IOException {
-        String fileName = file.getOriginalFilename();
+        if (file != null) {
+            String fileName = file.getOriginalFilename();
 
-        if (fileName == null || !fileName.toLowerCase().endsWith(".zip")) {
-            LOGGER.error("Intento de subida con archivo incorrecto (no es ZIP): {}", fileName);
-            throw new IllegalArgumentException("El archivo debe ser un .zip");
-        }
+            if (fileName == null || !fileName.toLowerCase().endsWith(".zip")) {
+                LOGGER.error("Intento de subida con archivo incorrecto (no es ZIP): {}", fileName);
+                throw new IllegalArgumentException("El archivo debe ser un .zip");
+            }
 
-        try (ZipInputStream zipInputStream = new ZipInputStream(file.getInputStream())) {
-            ZipEntry zipEntry;
+            try (ZipInputStream zipInputStream = new ZipInputStream(file.getInputStream())) {
+                ZipEntry zipEntry;
 
-            while ((zipEntry = zipInputStream.getNextEntry()) != null) {
-                if (zipEntry.getName().endsWith("followers_1.json")) {
+                while ((zipEntry = zipInputStream.getNextEntry()) != null) {
+                    if (zipEntry.getName().endsWith("followers_1.json")) {
+                        LOGGER.debug("Archivo 'followers_1.json' encontrado dentro del ZIP.");
 
-                    // LOG 5: Debug (opcional, útil para desarrollo)
-                    LOGGER.debug("Archivo 'followers_1.json' encontrado dentro del ZIP.");
+                        StringBuilder content = new StringBuilder();
+                        BufferedReader reader = new BufferedReader(new InputStreamReader(zipInputStream, StandardCharsets.UTF_8));
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            content.append(line);
+                        }
 
-                    StringBuilder content = new StringBuilder();
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(zipInputStream, StandardCharsets.UTF_8));
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        content.append(line);
+                        return content.toString();
                     }
-
-                    return content.toString();
                 }
             }
         }
 
-        LOGGER.error("El archivo ZIP {} no contiene 'followers_1.json'", fileName);
-        throw new IllegalArgumentException("El ZIP no contiene el archivo 'followers_1.json'. Asegúrate de haber descargado los datos correctos de Instagram.");
+        LOGGER.error("El archivo ZIP no existe o no contiene 'followers_1.json'");
+        throw new IllegalArgumentException("El ZIP no existe o no contiene el archivo 'followers_1.json'. Asegúrate de haber descargado los datos correctos de Instagram.");
     }
 }
