@@ -16,7 +16,7 @@ public class AnalysisHistory {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Integer id;
 
     @Column(name = "account_id")
     private Integer accountId;
