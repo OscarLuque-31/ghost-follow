@@ -9,6 +9,6 @@ import java.util.List;
 @Builder
 public class AnalysisResponse {
     private Stats stats;
-    private List<String> newFollowers;   // Lista Verde
-    private List<String> lostFollowers;  // Lista Roja
+    private List<String> newFollowers;
+    private List<String> lostFollowers;
 }
