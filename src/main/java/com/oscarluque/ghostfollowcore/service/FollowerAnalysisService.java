@@ -3,9 +3,11 @@ package com.oscarluque.ghostfollowcore.service;
 import com.oscarluque.ghostfollowcore.dto.follower.InstagramProfile;
 import com.oscarluque.ghostfollowcore.dto.response.AnalysisResponse;
 import com.oscarluque.ghostfollowcore.dto.response.Stats;
+import com.oscarluque.ghostfollowcore.persistence.entity.AnalysisHistory;
 import com.oscarluque.ghostfollowcore.persistence.entity.FollowerDetail;
 import com.oscarluque.ghostfollowcore.persistence.entity.MonitoredAccount;
 import com.oscarluque.ghostfollowcore.persistence.repository.AccountRepository;
+import com.oscarluque.ghostfollowcore.persistence.repository.AnalysisHistoryRepository;
 import com.oscarluque.ghostfollowcore.persistence.repository.FollowerBatchRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +26,7 @@ public class FollowerAnalysisService {
     private final AccountRepository accountRepository;
     private final FollowerBatchRepository followerBatchRepository;
     private final EmailAlertService emailAlert;
+    private final AnalysisHistoryRepository analysisHistoryRepository;
 
     @Transactional
     public AnalysisResponse processNewFollowerList(List<InstagramProfile> currentFollowers, String accountName, String userEmail) {
@@ -78,6 +81,16 @@ public class FollowerAnalysisService {
         if (!lostFollowers.isEmpty() || !gainedFollowers.isEmpty()) {
             emailAlert.sendSummaryEmail(userEmail, accountName, lostFollowers, gainedFollowers);
         }
+
+        AnalysisHistory history = AnalysisHistory.builder()
+                .accountId(accountToSave.getAccountId())
+                .totalFollowers(currentFollowers.size())
+                .gainedCount(gainedFollowers.size())
+                .lostCount(lostFollowers.size())
+                .analysisDate(LocalDateTime.now())
+                .build();
+
+        analysisHistoryRepository.save(history);
 
         return AnalysisResponse.builder()
                 .stats(Stats.builder()
