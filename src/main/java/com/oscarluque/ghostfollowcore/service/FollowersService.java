@@ -22,7 +22,7 @@ public class FollowersService {
         MonitoredAccount monitoredAccount = accountRepository.findByUserEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Cuenta no encontrada: " + email));
 
-        List<FollowerDetail> followerDetails = accountFollowersRepository.findByAccountId(monitoredAccount.getAccountId()).orElse(List.of());
+        List<FollowerDetail> followerDetails = accountFollowersRepository.findById_AccountId(monitoredAccount.getAccountId()).orElse(List.of());
 
         return followerDetails.stream()
                 .map(entity -> FollowerResponse.builder()
