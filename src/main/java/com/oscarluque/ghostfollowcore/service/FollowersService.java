@@ -25,11 +25,13 @@ public class FollowersService {
         List<FollowerDetail> followerDetails = accountFollowersRepository.findById_AccountId(monitoredAccount.getAccountId()).orElse(List.of());
 
         return followerDetails.stream()
-                .map(entity -> FollowerResponse.builder()
-                        .name(entity.getAccountState().getInstagramAccountName())
+                .map(entity ->
+                        FollowerResponse.builder()
+                        .name(entity.getId().getFollowerUsername())
                         .followDate(entity.getLastUpdate())
                         .url(entity.getFollowerProfileUrl())
-                        .build())
+                        .build()
+                )
                 .toList();
     }
 }
