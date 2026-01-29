@@ -22,5 +22,5 @@ public class FollowerDetail {
     @ManyToOne(fetch = FetchType.LAZY)
     @MapsId("accountId")
     @JoinColumn(name = "account_id")
-    private MonitoredAccount monitoredAccount;
+    private MonitoredAccount accountState;
 }
