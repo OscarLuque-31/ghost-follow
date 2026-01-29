@@ -31,12 +31,10 @@ public class FollowerAnalysisService {
     @Transactional
     public AnalysisResponse processNewFollowerList(List<InstagramProfile> currentFollowers, String accountName, String userEmail) {
 
-        // Step 1: Extraer usernames nuevos
         List<String> newUsernames = currentFollowers.stream()
                 .map(InstagramProfile::getValue)
                 .toList();
 
-        // Step 2: Buscar cuenta existente
         Optional<MonitoredAccount> accountOpt = accountRepository.findByUserEmail(userEmail);
 
         List<String> gainedFollowers = new ArrayList<>();
