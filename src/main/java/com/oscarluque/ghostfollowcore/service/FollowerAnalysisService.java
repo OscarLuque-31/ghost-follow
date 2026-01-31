@@ -2,6 +2,7 @@ package com.oscarluque.ghostfollowcore.service;
 
 import com.oscarluque.ghostfollowcore.dto.follower.InstagramProfile;
 import com.oscarluque.ghostfollowcore.dto.response.AnalysisResponse;
+import com.oscarluque.ghostfollowcore.dto.response.FollowerResponse;
 import com.oscarluque.ghostfollowcore.dto.response.Stats;
 import com.oscarluque.ghostfollowcore.persistence.entity.AnalysisHistory;
 import com.oscarluque.ghostfollowcore.persistence.entity.FollowerDetail;
@@ -14,8 +15,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,30 +35,49 @@ public class FollowerAnalysisService {
     @Transactional
     public AnalysisResponse processNewFollowerList(List<InstagramProfile> currentFollowers, String accountName, String userEmail) {
 
-        List<String> newUsernames = currentFollowers.stream()
-                .map(InstagramProfile::getValue)
+        List<FollowerResponse> currentFollowersResponse = currentFollowers.stream()
+                .map(instagramProfile -> FollowerResponse.builder()
+                        .name(instagramProfile.getValue())
+                        .followDate(LocalDateTime.ofInstant(
+                                Instant.ofEpochSecond(instagramProfile.getTimestamp()),
+                                ZoneId.systemDefault()))
+                        .url(instagramProfile.getHref()).build())
                 .toList();
 
-        Optional<MonitoredAccount> accountOpt = accountRepository.findByUserEmail(userEmail);
+        Optional<MonitoredAccount> monitoredAccount = accountRepository.findByUserEmail(userEmail);
 
-        List<String> gainedFollowers = new ArrayList<>();
-        List<String> lostFollowers = new ArrayList<>();
+        List<FollowerResponse> gainedFollowers = new ArrayList<>();
+        List<FollowerResponse> lostFollowers = new ArrayList<>();
+
         MonitoredAccount accountToSave;
 
-        if (accountOpt.isPresent()) {
-            accountToSave = accountOpt.get();
+        if (monitoredAccount.isPresent()) {
+            accountToSave = monitoredAccount.get();
 
-            List<String> oldUsernames = extractUsernames(accountToSave.getFollowerDetails());
+            List<FollowerDetail> oldFollowers = accountToSave.getFollowerDetails();
 
-            Set<String> oldSet = new HashSet<>(oldUsernames);
-            Set<String> newSet = new HashSet<>(newUsernames);
+            Map<String, FollowerResponse> newFollowersMap = currentFollowersResponse.stream()
+                    .collect(Collectors.toMap(FollowerResponse::getName, Function.identity(), (existing, replacement) -> existing));
 
-            for (String user : oldSet) {
-                if (!newSet.contains(user)) lostFollowers.add(user);
+            Set<String> oldUsernames = oldFollowers.stream()
+                    .map(d -> d.getId().getFollowerUsername())
+                    .collect(Collectors.toSet());
+
+            for (FollowerDetail old : oldFollowers) {
+                String username = old.getId().getFollowerUsername();
+                if (!newFollowersMap.containsKey(username)) {
+                    lostFollowers.add(FollowerResponse.builder()
+                            .name(username)
+                            .url(old.getFollowerProfileUrl())
+                            .followDate(old.getLastUpdate())
+                            .build());
+                }
             }
 
-            for (String user : newSet) {
-                if (!oldSet.contains(user)) gainedFollowers.add(user);
+            for (FollowerResponse newFollower : currentFollowersResponse) {
+                if (!oldUsernames.contains(newFollower.getName())) {
+                    gainedFollowers.add(newFollower);
+                }
             }
 
             log.info("Cuenta {}: Perdidos {}, Ganados {}", accountName, lostFollowers.size(), gainedFollowers.size());
@@ -77,7 +100,9 @@ public class FollowerAnalysisService {
         }
 
         if (!lostFollowers.isEmpty() || !gainedFollowers.isEmpty()) {
-            emailAlert.sendSummaryEmail(userEmail, accountName, lostFollowers, gainedFollowers);
+            List<String> lostNames = lostFollowers.stream().map(FollowerResponse::getName).toList();
+            List<String> gainedNames = gainedFollowers.stream().map(FollowerResponse::getName).toList();
+            emailAlert.sendSummaryEmail(userEmail, accountName, lostNames, gainedNames);
         }
 
         AnalysisHistory history = AnalysisHistory.builder()
@@ -92,19 +117,12 @@ public class FollowerAnalysisService {
 
         return AnalysisResponse.builder()
                 .stats(Stats.builder()
-                        .totalFollowers(newUsernames.size())
+                        .totalFollowers(currentFollowersResponse.size())
                         .gainedCount(gainedFollowers.size())
                         .lostCount(lostFollowers.size())
                         .build())
                 .newFollowers(gainedFollowers)
                 .lostFollowers(lostFollowers)
                 .build();
-    }
-
-    private List<String> extractUsernames(List<FollowerDetail> followerDetails) {
-        if (followerDetails == null) return List.of();
-        return followerDetails.stream()
-                .map(detail -> detail.getId().getFollowerUsername())
-                .toList();
     }
 }
