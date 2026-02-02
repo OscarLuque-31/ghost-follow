@@ -7,6 +7,7 @@ import com.oscarluque.ghostfollowcore.persistence.entity.MonitoredAccount;
 import com.oscarluque.ghostfollowcore.persistence.entity.User;
 import com.oscarluque.ghostfollowcore.persistence.repository.AccountRepository;
 import com.oscarluque.ghostfollowcore.persistence.repository.UserRepository;
+import com.oscarluque.ghostfollowcore.service.AuthService;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -23,48 +24,25 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class AuthController {
 
-
-    private final UserRepository userRepository;
-    private final AccountRepository accountRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final JwtService jwtService;
-    private final AuthenticationManager authenticationManager;
+    private final AuthService authService;
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@RequestBody AuthRequest request) {
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+        try {
+            return ResponseEntity.ok(authService.register(request));
+        } catch (RuntimeException e) {
             return ResponseEntity.badRequest().build();
         }
-
-        User user = new User();
-        user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        userRepository.save(user);
-
-        String token = jwtService.generateToken(user);
-
-        return ResponseEntity.ok(new AuthResponse(token));
     }
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody AuthRequest request) {
-        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
-
-        User user = userRepository.findByEmail(request.getEmail()).orElseThrow();
-
-        String token = jwtService.generateToken(user);
-
-        return ResponseEntity.ok(new AuthResponse(token));
+        return ResponseEntity.ok(authService.login(request));
     }
 
     @GetMapping("/me")
     public ResponseEntity<String> getCurrentUser() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-
-        MonitoredAccount monitoredAccount = accountRepository.findByUserEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
-
-        return ResponseEntity.ok(monitoredAccount.getInstagramAccountName());
+        return ResponseEntity.ok(authService.getCurrentUserInstagramName());
     }
 
 }
