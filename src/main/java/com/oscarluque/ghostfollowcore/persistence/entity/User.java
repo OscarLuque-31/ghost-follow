@@ -23,6 +23,12 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private String password;
 
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Subscription subscription;
+
+    public boolean isPremium() {
+        return subscription != null && subscription.isActive();
+    }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
