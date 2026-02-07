@@ -15,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -44,20 +43,25 @@ public class FollowingService {
 
         log.info("Mapeos a Following Details");
 
-        accountFollowingRepository.saveAll(followingDetails);
-        log.info("✅ Guardados {} seguidos para la cuenta {}", followingDetails.size(), monitoredAccount.getInstagramAccountName());
+        try {
+            accountFollowingRepository.saveAll(followingDetails);
+            log.info("✅ Guardados {} registros.", followingDetails.size());
+
+        } catch (Exception e) {
+            log.error("💣 ERROR AL INSERTAR EN BBDD 💣");
+            log.error("Mensaje: {}", e.getMessage());
+            if (e.getCause() != null) {
+                log.error("Causa raíz: {}", e.getCause().getMessage());
+            }
+            throw e;
+        }
     }
 
     private List<FollowingDetail> mapFollowings(List<Following> currentFollowingList, MonitoredAccount account) {
 
-        return new ArrayList<>(currentFollowingList.stream()
-                .map(following -> {
+        return currentFollowingList.stream().map(following -> {
 
                     if (following.getStringListData() == null || following.getStringListData().isEmpty()) {
-                        return null;
-                    }
-
-                    if (following.getTitle() == null) {
                         return null;
                     }
 
@@ -74,10 +78,6 @@ public class FollowingService {
                             .build();
                 })
                 .filter(Objects::nonNull)
-                .collect(java.util.stream.Collectors.toMap(
-                        detail -> detail.getId().getUsername(),
-                        detail -> detail,
-                        (existing, replacement) -> existing
-                )).values());
+                .toList();
     }
 }
