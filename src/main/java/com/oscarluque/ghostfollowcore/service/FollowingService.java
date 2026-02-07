@@ -32,6 +32,8 @@ public class FollowingService {
         MonitoredAccount monitoredAccount = accountRepository.findByUserEmail(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("Cuenta no encontrada: " + userEmail));
 
+        log.info("Cuenta encontrada: {}", monitoredAccount);
+
         accountFollowingRepository.deleteByAccountId(monitoredAccount.getAccountId());
 
         List<FollowingDetail> followingDetails = mapFollowings(currentFollowingList, monitoredAccount);
