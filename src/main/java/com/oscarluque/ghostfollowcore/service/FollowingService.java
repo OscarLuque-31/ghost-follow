@@ -36,7 +36,11 @@ public class FollowingService {
 
         accountFollowingRepository.deleteByAccountId(monitoredAccount.getAccountId());
 
+        log.info("Followings de la cuenta {} borrados", monitoredAccount);
+
         List<FollowingDetail> followingDetails = mapFollowings(currentFollowingList, monitoredAccount);
+
+        log.info("Mapeos a Following Details");
 
         accountFollowingRepository.saveAll(followingDetails);
         log.info("✅ Guardados {} seguidos para la cuenta {}", followingDetails.size(), monitoredAccount.getInstagramAccountName());
