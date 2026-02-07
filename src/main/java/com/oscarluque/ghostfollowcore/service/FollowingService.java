@@ -2,7 +2,9 @@ package com.oscarluque.ghostfollowcore.service;
 
 import com.oscarluque.ghostfollowcore.dto.follower.Following;
 import com.oscarluque.ghostfollowcore.dto.follower.InstagramProfile;
-import com.oscarluque.ghostfollowcore.persistence.entity.*;
+import com.oscarluque.ghostfollowcore.persistence.entity.FollowingDetail;
+import com.oscarluque.ghostfollowcore.persistence.entity.FollowingId;
+import com.oscarluque.ghostfollowcore.persistence.entity.MonitoredAccount;
 import com.oscarluque.ghostfollowcore.persistence.repository.AccountFollowingRepository;
 import com.oscarluque.ghostfollowcore.persistence.repository.AccountRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +16,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
-import java.util.Optional;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -42,17 +44,23 @@ public class FollowingService {
 
         return currentFollowingList.stream().map(following -> {
 
-            InstagramProfile profile = following.getStringListData().get(0);
+                    if (following.getStringListData() == null || following.getStringListData().isEmpty()) {
+                        return null;
+                    }
 
-            return FollowingDetail.builder()
-                    .id(new FollowingId(account.getAccountId(), following.getTitle()))
-                    .followingSince(
-                            LocalDateTime.ofInstant(
-                                    Instant.ofEpochSecond(profile.getTimestamp()),
-                                    ZoneId.systemDefault()))
-                    .account(account)
-                    .profileUrl(profile.getHref())
-                    .build();
-        }).toList();
+                    InstagramProfile profile = following.getStringListData().get(0);
+
+                    return FollowingDetail.builder()
+                            .id(new FollowingId(account.getAccountId(), following.getTitle()))
+                            .followingSince(
+                                    LocalDateTime.ofInstant(
+                                            Instant.ofEpochSecond(profile.getTimestamp()),
+                                            ZoneId.systemDefault()))
+                            .account(account)
+                            .profileUrl(profile.getHref())
+                            .build();
+                })
+                .filter(Objects::nonNull)
+                .toList();
     }
 }

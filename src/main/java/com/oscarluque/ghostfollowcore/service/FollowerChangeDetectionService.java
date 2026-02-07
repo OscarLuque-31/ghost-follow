@@ -57,7 +57,7 @@ public class FollowerChangeDetectionService {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("Archivo vacío.");
         }
-        if (file.getOriginalFilename() == null && !file.getOriginalFilename().toLowerCase().endsWith(".zip")) {
+        if (file.getOriginalFilename() == null || !file.getOriginalFilename().toLowerCase().endsWith(".zip")) {
             throw new IllegalArgumentException("Debe ser un archivo .zip");
         }
     }
