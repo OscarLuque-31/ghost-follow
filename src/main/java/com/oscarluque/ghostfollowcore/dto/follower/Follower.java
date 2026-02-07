@@ -10,7 +10,7 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class FollowerWrapper {
+public class Follower {
     @JsonProperty("string_list_data")
     private List<InstagramProfile> followerEntryList;
 }

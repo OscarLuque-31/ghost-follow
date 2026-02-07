@@ -2,21 +2,19 @@ package com.oscarluque.ghostfollowcore.persistence.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 
 @Embeddable
 @Data
 @NoArgsConstructor
 @RequiredArgsConstructor
+@AllArgsConstructor
 @EqualsAndHashCode
-public class FollowerId {
+public class FollowingId {
 
     @Column(name = "account_id")
     private Integer accountId;
 
-    @Column(name = "follower_username")
-    private String followerUsername;
+    @Column(name = "username")
+    private String username;
 }

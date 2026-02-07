@@ -3,9 +3,11 @@ package com.oscarluque.ghostfollowcore.service;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.oscarluque.ghostfollowcore.dto.follower.FollowerWrapper;
+import com.oscarluque.ghostfollowcore.dto.follower.Follower;
+import com.oscarluque.ghostfollowcore.dto.follower.FollowingList;
 import com.oscarluque.ghostfollowcore.dto.follower.InstagramProfile;
 import com.oscarluque.ghostfollowcore.dto.response.AnalysisResponse;
+import com.oscarluque.ghostfollowcore.dto.utils.ZipDataResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,74 +24,91 @@ import java.util.zip.ZipInputStream;
 @Slf4j
 public class FollowerChangeDetectionService {
 
-    private static final String TARGET_FILE_NAME = "followers_1.json";
+    private static final String TARGET_FILE_NAME_FOLLOWERS = "followers_1.json";
+    private static final String TARGET_FILE_NAME_FOLLOWING = "following.json";
 
     private final ObjectMapper objectMapper;
     private final FollowerAnalysisService followerAnalysisService;
+    private final FollowingService followingService;
 
     public AnalysisResponse processFollowerFile(MultipartFile file, String accountName, String userEmail) throws IOException {
-        log.info("INICIO: Procesando archivo para la cuenta: {}", accountName);
+        log.info("Procesando ZIP para: {}", accountName);
         long startTime = System.currentTimeMillis();
 
         validateZipFile(file);
 
-        List<FollowerWrapper> rawWrappers = parseJsonFromZipStream(file);
-        List<InstagramProfile> followers = extractProfiles(rawWrappers);
+        ZipDataResult zipData = extractDataFromZip(file);
 
-        validateFollowerList(followers, accountName);
+        if (zipData.getFollowers().isEmpty() && zipData.getFollowing().isEmpty()) {
+            throw new IllegalArgumentException("El ZIP no contiene datos válidos de Instagram.");
+        }
 
-        log.info("PARSEO COMPLETADO: {} seguidores procesados en {} ms.", followers.size(), System.currentTimeMillis() - startTime);
+        log.info("Procesado en {} ms. Followers: {}, Following: {}",
+                System.currentTimeMillis() - startTime,
+                zipData.getFollowers().size(),
+                zipData.getFollowing().size());
 
-        return followerAnalysisService.processNewFollowerList(followers, accountName, userEmail);
+        followingService.processFollowingList(zipData.getFollowing(), userEmail);
+
+        return followerAnalysisService.processNewFollowerList(zipData.getFollowers(), accountName, userEmail);
     }
 
     private void validateZipFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("El archivo no puede estar vacío.");
+            throw new IllegalArgumentException("Archivo vacío.");
         }
-        String fileName = file.getOriginalFilename();
-        if (fileName == null || !fileName.toLowerCase().endsWith(".zip")) {
-            log.error("Intento de subida inválido: {}", fileName);
-            throw new IllegalArgumentException("El archivo debe ser un .zip válido.");
+        if (file.getOriginalFilename() == null && !file.getOriginalFilename().toLowerCase().endsWith(".zip")) {
+            throw new IllegalArgumentException("Debe ser un archivo .zip");
         }
     }
 
+    private ZipDataResult extractDataFromZip(MultipartFile file) throws IOException {
+        ZipDataResult.ZipDataResultBuilder resultBuilder = ZipDataResult.builder();
 
-    private List<FollowerWrapper> parseJsonFromZipStream(MultipartFile file) throws IOException {
-        try (ZipInputStream zipInputStream = new ZipInputStream(file.getInputStream())) {
-            ZipEntry zipEntry;
+        try (ZipInputStream zis = new ZipInputStream(file.getInputStream())) {
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                String name = entry.getName();
 
-            while ((zipEntry = zipInputStream.getNextEntry()) != null) {
-                if (zipEntry.getName().endsWith(TARGET_FILE_NAME)) {
-                    log.debug("📂 Archivo '{}' encontrado. Iniciando lectura stream...", TARGET_FILE_NAME);
+                if (name.endsWith(TARGET_FILE_NAME_FOLLOWERS)) {
+                    try {
+                        List<Follower> raw = objectMapper
+                                .disable(JsonParser.Feature.AUTO_CLOSE_SOURCE)
+                                .readValue(zis, new TypeReference<List<Follower>>() {});
+                        resultBuilder.followers(flattenFollowers(raw));
+                    } catch (Exception e) {
+                        log.error("Error parseando followers", e);
+                        throw new IllegalArgumentException("JSON de followers inválido.");
+                    }
 
-                    return objectMapper
-                            .disable(JsonParser.Feature.AUTO_CLOSE_SOURCE)
-                            .readValue(zipInputStream, new TypeReference<List<FollowerWrapper>>() {});
+                } else if (name.endsWith(TARGET_FILE_NAME_FOLLOWING)) {
+                    try {
+                        FollowingList response = objectMapper
+                                .disable(JsonParser.Feature.AUTO_CLOSE_SOURCE)
+                                .readValue(zis, FollowingList.class);
+
+                        if (response.getRelationships() != null) {
+                            resultBuilder.following(response.getRelationships());
+                        }
+                    } catch (Exception e) {
+                        log.error("Error parseando following", e);
+                        throw new IllegalArgumentException("JSON de following inválido.");
+                    }
                 }
             }
         }
-
-        log.error("El ZIP analizado no contenía '{}'", TARGET_FILE_NAME);
-        throw new IllegalArgumentException("El ZIP no contiene el archivo '" + TARGET_FILE_NAME + "'.");
+        return resultBuilder.build();
     }
 
-    private List<InstagramProfile> extractProfiles(List<FollowerWrapper> wrappers) {
+    private List<InstagramProfile> flattenFollowers(List<Follower> wrappers) {
         List<InstagramProfile> profiles = new ArrayList<>();
         if (wrappers != null) {
-            for (FollowerWrapper wrapper : wrappers) {
+            for (Follower wrapper : wrappers) {
                 if (wrapper.getFollowerEntryList() != null) {
                     profiles.addAll(wrapper.getFollowerEntryList());
                 }
             }
         }
         return profiles;
-    }
-
-    private void validateFollowerList(List<InstagramProfile> followers, String accountName) {
-        if (followers.isEmpty()) {
-            log.warn("El archivo procesado para {} no contenía seguidores válidos.", accountName);
-            throw new IllegalArgumentException("El archivo JSON no contiene seguidores o tiene un formato incorrecto.");
-        }
     }
 }
