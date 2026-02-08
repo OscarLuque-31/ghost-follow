@@ -14,7 +14,7 @@ import java.util.Optional;
 
 public interface AccountFollowingRepository extends JpaRepository<FollowingDetail, FollowingId> {
 
-    Optional<List<FollowingDetail>> findById_AccountId(Integer accountId);
+    List<FollowingDetail> findById_AccountId(Integer accountId);
 
     @Modifying
     @Query("DELETE FROM FollowingDetail f WHERE f.id.accountId = :accountId")

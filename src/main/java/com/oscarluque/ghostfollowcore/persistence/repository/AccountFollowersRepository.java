@@ -9,6 +9,6 @@ import java.util.Optional;
 
 public interface AccountFollowersRepository extends JpaRepository<FollowerDetail, FollowerId> {
 
-    Optional<List<FollowerDetail>> findById_AccountId(Integer accountId);
+    List<FollowerDetail> findById_AccountId(Integer accountId);
 
 }
