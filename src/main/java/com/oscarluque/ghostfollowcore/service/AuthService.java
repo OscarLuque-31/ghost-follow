@@ -5,10 +5,13 @@ import com.oscarluque.ghostfollowcore.constants.PlanType;
 import com.oscarluque.ghostfollowcore.constants.SubscriptionStatus;
 import com.oscarluque.ghostfollowcore.dto.auth.AuthRequest;
 import com.oscarluque.ghostfollowcore.dto.auth.AuthResponse;
+import com.oscarluque.ghostfollowcore.dto.response.UserResponse;
+import com.oscarluque.ghostfollowcore.dto.subscription.PlanSubscription;
 import com.oscarluque.ghostfollowcore.persistence.entity.MonitoredAccount;
 import com.oscarluque.ghostfollowcore.persistence.entity.Subscription;
 import com.oscarluque.ghostfollowcore.persistence.entity.User;
 import com.oscarluque.ghostfollowcore.persistence.repository.AccountRepository;
+import com.oscarluque.ghostfollowcore.persistence.repository.SubscriptionRepository;
 import com.oscarluque.ghostfollowcore.persistence.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import javax.security.auth.login.AccountNotFoundException;
 import java.time.LocalDateTime;
 
 @Service
@@ -34,6 +38,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final SubscriptionRepository subscriptionRepository;
 
     @Transactional
     public AuthResponse register(AuthRequest request) {
@@ -72,11 +77,27 @@ public class AuthService {
         return new AuthResponse(token);
     }
 
-    public String getCurrentUserInstagramName() {
+    public UserResponse getCurrentUserInstagramName() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
         MonitoredAccount monitoredAccount = accountRepository.findByUserEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("No hay cuenta de Instagram vinculada"));
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("No se ha encontrado usuario"));
+
+        Subscription subscription = subscriptionRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new IllegalArgumentException("No existe subcripcion para este usuario"));
+
+
+        PlanSubscription planSubscription = PlanSubscription.builder()
+                .planType(subscription.getPlanType())
+                .status(subscription.getStatus())
+                .startDate(subscription.getStartDate())
+                .currentPeriodEnd(subscription.getCurrentPeriodEnd())
+                .build();
+
+
 
         return monitoredAccount.getInstagramAccountName();
     }
