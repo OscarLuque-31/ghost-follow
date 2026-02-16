@@ -25,7 +25,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import javax.security.auth.login.AccountNotFoundException;
 import java.time.LocalDateTime;
 
 @Service
@@ -77,7 +76,7 @@ public class AuthService {
         return new AuthResponse(token);
     }
 
-    public UserResponse getCurrentUserInstagramName() {
+    public UserResponse getCurrentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
         MonitoredAccount monitoredAccount = accountRepository.findByUserEmail(email)
@@ -98,7 +97,10 @@ public class AuthService {
                 .build();
 
 
-
-        return monitoredAccount.getInstagramAccountName();
+        return UserResponse.builder()
+                .instagramUserName(monitoredAccount.getInstagramAccountName())
+                .email(email)
+                .subscription(planSubscription)
+                .build();
     }
 }
