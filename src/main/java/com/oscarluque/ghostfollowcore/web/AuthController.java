@@ -1,7 +1,7 @@
 package com.oscarluque.ghostfollowcore.web;
 
-import com.oscarluque.ghostfollowcore.dto.auth.AuthRequest;
-import com.oscarluque.ghostfollowcore.dto.auth.AuthResponse;
+import com.oscarluque.ghostfollowcore.dto.auth.*;
+import com.oscarluque.ghostfollowcore.dto.response.MessageResponse;
 import com.oscarluque.ghostfollowcore.dto.response.UserResponse;
 import com.oscarluque.ghostfollowcore.service.AuthService;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +33,29 @@ public class AuthController {
     public ResponseEntity<UserResponse> getCurrentUser() {
         return ResponseEntity.ok(authService.getCurrentUser());
     }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<MessageResponse> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        authService.forgotPassword(request.getEmail());
+
+        return ResponseEntity.ok(new MessageResponse("Si el correo está registrado, recibirás un código en breve."));
+    }
+
+    @PostMapping("/verify-code")
+    public ResponseEntity<MessageResponse> verifyCode(@RequestBody VerifyCodeRequest request) {
+        authService.verifyCode(request.getEmail(), request.getCode());
+
+        return ResponseEntity.ok(new MessageResponse("Código válido"));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<MessageResponse> resetPassword(@RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+
+        return ResponseEntity.ok(new MessageResponse("Contraseña actualizada exitosamente."));
+    }
+
+
 
 }
 

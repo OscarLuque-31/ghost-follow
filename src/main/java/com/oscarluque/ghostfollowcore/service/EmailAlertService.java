@@ -86,4 +86,29 @@ public class EmailAlertService {
             return String.format("✨ Buenas noticias: %d nuevos seguidores en %s", gained, account);
         }
     }
+
+
+    public void sendPasswordResetCode(String toEmail, String code) {
+        try {
+            Context context = new Context();
+            context.setVariable("code", code);
+
+            String htmlContent = templateEngine.process("password-reset", context);
+
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+            helper.setTo(toEmail);
+            helper.setSubject("Tu código de recuperación - GhostFollow");
+            helper.setText(htmlContent, true);
+
+            mailSender.send(mimeMessage);
+            log.info("Correo de recuperación enviado exitosamente a: {}", toEmail);
+
+        } catch (MessagingException e) {
+            log.error("Error al enviar el correo de recuperación a {}: {}", toEmail, e.getMessage());
+        }
+    }
+
+
 }
