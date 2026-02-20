@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.oscarluque</groupId>
 	<artifactId>ghostfollowcore</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0.0-SNAPSHOT</version>
 	<name>ghostfollowcore</name>
 	<description> App to monitor people who unfollow you on Instagram</description>
 	<url/>
@@ -100,6 +100,11 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+        <dependency>
+            <groupId>com.stripe</groupId>
+            <artifactId>stripe-java</artifactId>
+            <version>24.22.0</version>
+        </dependency>
 	</dependencies>
 
 	<build>
