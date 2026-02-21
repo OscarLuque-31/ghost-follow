@@ -2,6 +2,7 @@ package com.oscarluque.ghostfollowcore.exception;
 
 
 import com.oscarluque.ghostfollowcore.dto.response.ErrorResponse;
+import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
 import io.jsonwebtoken.io.IOException;
 import lombok.extern.slf4j.Slf4j;
@@ -57,6 +58,20 @@ public class GlobalExceptionHandler {
 
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .message("El servicio de pagos no está disponible temporalmente. Por favor, inténtalo más tarde.")
+                .details(request.getDescription(false))
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    @ExceptionHandler(SignatureVerificationException.class)
+    public ResponseEntity<ErrorResponse> handleSignatureVerificationException(SignatureVerificationException exception, WebRequest request) {
+
+        log.error("Error al hacer la firma de verificacion: " + exception.getMessage());
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .message("El servicio de pagos ha fallado. Por favor, inténtalo más tarde.")
                 .details(request.getDescription(false))
                 .timestamp(LocalDateTime.now())
                 .build();
