@@ -31,8 +31,8 @@ public class WebhookController {
             @RequestBody String payload,
             @RequestHeader("Stripe-Signature") String sigHeader) throws SignatureVerificationException {
 
-        Event event;
-        event = Webhook.constructEvent(payload, sigHeader, endpoindSecret);
+        Event event = Webhook.constructEvent(payload, sigHeader, endpoindSecret);
+
         String checkoutCompletedEvent = "checkout.session.completed";
 
         if (checkoutCompletedEvent.equals(event.getType())) {
@@ -40,11 +40,11 @@ public class WebhookController {
 
             if (stripeObject.isPresent() && stripeObject.get() instanceof Session) {
                 Session session = (Session) stripeObject.get();
+                log.info("Extracción segura exitosa. Actualizando a Premium...");
                 userService.upgradeUserToPremium(session);
+                log.info("¡Usuario actualizado a Premium en la base de datos!");
             }
-
         }
-
         return ResponseEntity.ok("Recibido");
     }
 
