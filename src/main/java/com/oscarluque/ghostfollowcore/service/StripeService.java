@@ -15,10 +15,10 @@ public class StripeService {
     @Value("${STRIPE_API_KEY}")
     private String stripeApiKey;
 
-    @Value("${STRIPE_PROD_MONTHLY}")
+    @Value("${STRIPE_PRICE_MONTHLY}")
     private String priceMonthly;
 
-    @Value("${STRIPE_PROD_LIFETIME}")
+    @Value("${STRIPE_PRICE_LIFETIME}")
     private String priceLifetime;
 
     @Value("${STRIPE_SUCCESS_URL}")
