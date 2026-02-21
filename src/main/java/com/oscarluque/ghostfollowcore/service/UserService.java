@@ -9,6 +9,7 @@ import com.oscarluque.ghostfollowcore.persistence.repository.UserRepository;
 import com.stripe.model.Event;
 import com.stripe.model.checkout.Session;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserService {
 
     private final UserRepository userRepository;
@@ -24,7 +26,10 @@ public class UserService {
     @Transactional
     public void upgradeUserToPremium(Session session){
 
-        User user = userRepository.findByEmail(session.getCustomerEmail())
+        String email = session.getCustomerDetails() != null ?
+                session.getCustomerDetails().getEmail() : session.getCustomerEmail();
+
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
 
         Subscription subscription = subscriptionRepository.findByUserId(user.getId())
@@ -48,6 +53,7 @@ public class UserService {
         }
 
         subscriptionRepository.save(subscription);
+        log.info("¡Usuario {} actualizado a PREMIUM con éxito!", email);
     }
 
 }

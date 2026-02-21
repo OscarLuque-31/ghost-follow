@@ -42,6 +42,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGlobalException(Exception exception, WebRequest request) {
+
+        log.error("Error crítico no controlado: ", exception);
+
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .message("Error interno del servidor")
                 .details(request.getDescription(false))
