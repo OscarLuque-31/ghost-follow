@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.Optional;
 
 @RestController
@@ -38,8 +39,7 @@ public class WebhookController {
         if (checkoutCompletedEvent.equals(event.getType())) {
             Optional<StripeObject> stripeObject = event.getDataObjectDeserializer().getObject();
 
-            if (stripeObject.isPresent() && stripeObject.get() instanceof Session) {
-                Session session = (Session) stripeObject.get();
+            if (stripeObject.isPresent() && stripeObject.get() instanceof Session session) {
                 log.info("Extracción segura exitosa. Actualizando a Premium...");
                 userService.upgradeUserToPremium(session);
                 log.info("¡Usuario actualizado a Premium en la base de datos!");

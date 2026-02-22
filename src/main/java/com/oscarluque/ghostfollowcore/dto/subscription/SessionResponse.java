@@ -5,6 +5,6 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class SessionCheckoutResponse {
+public class SessionResponse {
     private String urlSession;
 }
