@@ -82,5 +82,6 @@ public class UserService {
         }
 
         subscriptionRepository.save(localSubscription);
+        log.info("Suscripción de Stripe ({}) actualizada al estado: {}", stripeSubscription.getId(), localSubscription.getStatus());
     }
 }
