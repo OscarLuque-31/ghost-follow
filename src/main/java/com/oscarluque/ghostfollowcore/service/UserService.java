@@ -65,7 +65,8 @@ public class UserService {
 
         String stripeStatus = stripeSubscription.getStatus();
 
-        boolean cancelAtPeriodEnd = Boolean.TRUE.equals(stripeSubscription.getCancelAtPeriodEnd());
+        boolean isCanceledForFuture = Boolean.TRUE.equals(stripeSubscription.getCancelAtPeriodEnd())
+                || stripeSubscription.getCancelAt() != null;
 
         String subscriptionCanceled = "canceled";
         String subscriptionUnpaid = "unpaid";
@@ -75,25 +76,45 @@ public class UserService {
             localSubscription.setStatus(SubscriptionStatus.EXPIRED);
             localSubscription.setPlanType(PlanType.FREE);
 
-        } else if (subscriptionActive.equals(stripeStatus) && cancelAtPeriodEnd) {
+        } else if (subscriptionActive.equals(stripeStatus) && isCanceledForFuture) {
             localSubscription.setStatus(SubscriptionStatus.CANCELED);
 
         } else if (subscriptionActive.equals(stripeStatus)) {
             localSubscription.setStatus(SubscriptionStatus.ACTIVE);
             localSubscription.setPlanType(PlanType.PREMIUM_MONTHLY);
+        }
 
-            if (stripeSubscription.getEndedAt() != null) {
-                LocalDateTime newEndDate = Instant.ofEpochSecond(stripeSubscription.getEndedAt())
-                        .atZone(ZoneId.systemDefault())
-                        .toLocalDateTime();
-                localSubscription.setCurrentPeriodEnd(newEndDate);
-            }
+        LocalDateTime endDate = extractSubscriptionEndDate(stripeSubscription);
+        if (endDate != null) {
+            localSubscription.setCurrentPeriodEnd(endDate);
         }
 
         subscriptionRepository.save(localSubscription);
-        log.info("Stripe Subscription ({}) | Status: {} | CancelAtPeriodEnd: {} | Estado final en BBDD: {}",
+        log.info("Stripe Subscription ({}) | Status: {} | isCanceledForFuture: {} | Estado final en BBDD: {}",
                 stripeSubscription.getId(),
                 stripeStatus,
-                cancelAtPeriodEnd,
-                localSubscription.getStatus());    }
+                isCanceledForFuture,
+                localSubscription.getStatus());
+    }
+
+    private LocalDateTime extractSubscriptionEndDate(com.stripe.model.Subscription stripeSubscription) {
+        Long targetDateEpoch = null;
+
+        if (stripeSubscription.getCancelAt() != null) {
+            targetDateEpoch = stripeSubscription.getCancelAt();
+        } else if (stripeSubscription.getItems() != null
+                && stripeSubscription.getItems().getData() != null
+                && !stripeSubscription.getItems().getData().isEmpty()) {
+
+            targetDateEpoch = stripeSubscription.getItems().getData().get(0).getCurrentPeriodEnd();
+        }
+
+        if (targetDateEpoch != null) {
+            return Instant.ofEpochSecond(targetDateEpoch)
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDateTime();
+        }
+
+        return null;
+    }
 }
