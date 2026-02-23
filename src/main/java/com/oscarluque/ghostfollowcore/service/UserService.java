@@ -13,7 +13,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 @Service
 @RequiredArgsConstructor
@@ -63,7 +65,7 @@ public class UserService {
 
         String stripeStatus = stripeSubscription.getStatus();
 
-        boolean cancelAtPeriodEnd = stripeSubscription.getCancelAtPeriodEnd();
+        boolean cancelAtPeriodEnd = Boolean.TRUE.equals(stripeSubscription.getCancelAtPeriodEnd());
 
         String subscriptionCanceled = "canceled";
         String subscriptionUnpaid = "unpaid";
@@ -79,6 +81,13 @@ public class UserService {
         } else if (subscriptionActive.equals(stripeStatus)) {
             localSubscription.setStatus(SubscriptionStatus.ACTIVE);
             localSubscription.setPlanType(PlanType.PREMIUM_MONTHLY);
+
+            if (stripeSubscription.getEndedAt() != null) {
+                LocalDateTime newEndDate = Instant.ofEpochSecond(stripeSubscription.getEndedAt())
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalDateTime();
+                localSubscription.setCurrentPeriodEnd(newEndDate);
+            }
         }
 
         subscriptionRepository.save(localSubscription);
