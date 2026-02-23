@@ -56,4 +56,29 @@ public class UserService {
         log.info("¡Usuario {} actualizado a PREMIUM con éxito!", email);
     }
 
+    @Transactional
+    public void handleSubscriptionUpdate(com.stripe.model.Subscription stripeSubscription) {
+        Subscription localSubscription = subscriptionRepository.findByStripeSubscriptionId(stripeSubscription.getId())
+                .orElseThrow(() -> new IllegalArgumentException("No existe subcripcion"));
+
+        String stripeStatus = stripeSubscription.getStatus();
+
+        boolean cancelAtPeriodEnd = stripeSubscription.getCancelAtPeriodEnd();
+
+        String subscriptionCanceled = "canceled";
+        String subscriptionUnpaid = "unpaid";
+        String subscriptionActive = "active";
+
+        if (subscriptionCanceled.equals(stripeStatus) || subscriptionUnpaid.equals(stripeStatus)) {
+            localSubscription.setStatus(SubscriptionStatus.EXPIRED);
+            localSubscription.setPlanType(PlanType.FREE);
+
+        } else if (subscriptionActive.equals(stripeStatus) && cancelAtPeriodEnd) {
+            localSubscription.setStatus(SubscriptionStatus.CANCELED);
+
+        } else if (subscriptionActive.equals(stripeStatus)) {
+            localSubscription.setStatus(SubscriptionStatus.ACTIVE);
+            localSubscription.setPlanType(PlanType.PREMIUM_MONTHLY);
+        }
+    }
 }
