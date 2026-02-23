@@ -91,6 +91,9 @@ public class UserService {
         }
 
         subscriptionRepository.save(localSubscription);
-        log.info("Suscripción de Stripe ({}) actualizada al estado: {}", stripeSubscription.getId(), localSubscription.getStatus());
-    }
+        log.info("Stripe Subscription ({}) | Status: {} | CancelAtPeriodEnd: {} | Estado final en BBDD: {}",
+                stripeSubscription.getId(),
+                stripeStatus,
+                cancelAtPeriodEnd,
+                localSubscription.getStatus());    }
 }
