@@ -80,5 +80,7 @@ public class UserService {
             localSubscription.setStatus(SubscriptionStatus.ACTIVE);
             localSubscription.setPlanType(PlanType.PREMIUM_MONTHLY);
         }
+
+        subscriptionRepository.save(localSubscription);
     }
 }

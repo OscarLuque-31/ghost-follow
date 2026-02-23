@@ -34,9 +34,14 @@ public class WebhookController {
         Event event = Webhook.constructEvent(payload, sigHeader, endpointSecret);
         String eventType = event.getType();
 
+        String checkoutCompletedEvent = "checkout.session.completed";
+        String subscriptionUpdatedEvent = "customer.subscription.updated";
+        String subscriptionDeletedEvent = "customer.subscription.deleted";
+
+
         log.info("Received Stripe webhook event: {}", eventType);
 
-        if ("checkout.session.completed".equals(eventType)) {
+        if (checkoutCompletedEvent.equals(eventType)) {
             Optional<StripeObject> stripeObject = event.getDataObjectDeserializer().getObject();
 
             if (stripeObject.isPresent() && stripeObject.get() instanceof Session session) {
@@ -47,7 +52,7 @@ public class WebhookController {
                 log.warn("Failed to deserialize Stripe session object for event: {}", event.getId());
             }
 
-        } else if ("customer.subscription.updated".equals(eventType) || "customer.subscription.deleted".equals(eventType)) {
+        } else if (subscriptionUpdatedEvent.equals(eventType) || subscriptionDeletedEvent.equals(eventType)) {
             Optional<StripeObject> stripeObject = event.getDataObjectDeserializer().getObject();
 
             if (stripeObject.isPresent() && stripeObject.get() instanceof Subscription subscription) {
