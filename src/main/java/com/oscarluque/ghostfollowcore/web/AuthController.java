@@ -55,6 +55,13 @@ public class AuthController {
         return ResponseEntity.ok(new MessageResponse("Contraseña actualizada exitosamente."));
     }
 
+    @PostMapping("/change-password")
+    public ResponseEntity<MessageResponse> changePassword(@RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+
+        return ResponseEntity.ok(new MessageResponse("Contraseña actualizada exitosamente."));
+    }
+
 
 
 }

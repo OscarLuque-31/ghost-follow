@@ -5,6 +5,7 @@ import com.oscarluque.ghostfollowcore.constants.PlanType;
 import com.oscarluque.ghostfollowcore.constants.SubscriptionStatus;
 import com.oscarluque.ghostfollowcore.dto.auth.AuthRequest;
 import com.oscarluque.ghostfollowcore.dto.auth.AuthResponse;
+import com.oscarluque.ghostfollowcore.dto.auth.ChangePasswordRequest;
 import com.oscarluque.ghostfollowcore.dto.auth.ResetPasswordRequest;
 import com.oscarluque.ghostfollowcore.dto.response.UserResponse;
 import com.oscarluque.ghostfollowcore.dto.subscription.PlanSubscription;
@@ -144,6 +145,15 @@ public class AuthService {
         userRepository.save(user);
 
         codeRepository.delete(resetCode);
+    }
+
+    @Transactional
+    public void changePassword(ChangePasswordRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
     }
 
     @Transactional
