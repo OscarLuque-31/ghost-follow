@@ -66,6 +66,13 @@ public class AuthService {
 
         userRepository.save(user);
 
+        MonitoredAccount monitoredAccount = new MonitoredAccount();
+        monitoredAccount.setInstagramAccountName(request.getInstagramUsername());
+        monitoredAccount.setUserEmail(request.getEmail());
+        monitoredAccount.setLastUpdated(LocalDateTime.now());
+
+        accountRepository.save(monitoredAccount);
+
         String token = jwtService.generateToken(user);
         return new AuthResponse(token);
     }

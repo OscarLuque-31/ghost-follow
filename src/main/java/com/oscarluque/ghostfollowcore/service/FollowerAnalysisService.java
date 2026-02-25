@@ -44,17 +44,20 @@ public class FollowerAnalysisService {
                         .url(instagramProfile.getHref()).build())
                 .toList();
 
-        Optional<MonitoredAccount> monitoredAccount = accountRepository.findByUserEmail(userEmail);
+        MonitoredAccount account = accountRepository.findByUserEmail(userEmail)
+                .orElseThrow(() -> new IllegalStateException("Error crítico: Cuenta de Instagram no encontrada para el usuario"));
 
+        List<FollowerDetail> oldFollowers = account.getFollowerDetails();
         List<FollowerResponse> gainedFollowers = new ArrayList<>();
         List<FollowerResponse> lostFollowers = new ArrayList<>();
 
-        MonitoredAccount accountToSave;
+        boolean isFirstUpload = (oldFollowers == null || oldFollowers.isEmpty());
 
-        if (monitoredAccount.isPresent()) {
-            accountToSave = monitoredAccount.get();
-
-            List<FollowerDetail> oldFollowers = accountToSave.getFollowerDetails();
+        if (isFirstUpload) {
+            log.info("Primera subida de datos para la cuenta {}. Estableciendo base de seguidores.", accountName);
+            followerBatchRepository.saveAllInBatch(currentFollowers, account.getAccountId());
+        } else {
+            log.info("Analizando diferencias para la cuenta {}...", accountName);
 
             Map<String, FollowerResponse> newFollowersMap = currentFollowersResponse.stream()
                     .collect(Collectors.toMap(FollowerResponse::getName, Function.identity(), (existing, replacement) -> existing));
@@ -82,31 +85,21 @@ public class FollowerAnalysisService {
 
             log.info("Cuenta {}: Perdidos {}, Ganados {}", accountName, lostFollowers.size(), gainedFollowers.size());
 
-            accountToSave.setLastUpdated(LocalDateTime.now());
-            accountRepository.save(accountToSave);
+            followerBatchRepository.deleteAllByAccountId(account.getAccountId());
+            followerBatchRepository.saveAllInBatch(currentFollowers, account.getAccountId());
 
-            followerBatchRepository.deleteAllByAccountId(accountToSave.getAccountId());
-            followerBatchRepository.saveAllInBatch(currentFollowers, accountToSave.getAccountId());
-        } else {
-            log.info("Cuenta nueva detectada: {}. Creando registro inicial.", accountName);
-
-            MonitoredAccount newAccount = new MonitoredAccount();
-            newAccount.setInstagramAccountName(accountName);
-            newAccount.setUserEmail(userEmail);
-            newAccount.setLastUpdated(LocalDateTime.now());
-
-            accountToSave = accountRepository.save(newAccount);
-            followerBatchRepository.saveAllInBatch(currentFollowers, accountToSave.getAccountId());
+            if (!lostFollowers.isEmpty() || !gainedFollowers.isEmpty()) {
+                List<String> lostNames = lostFollowers.stream().map(FollowerResponse::getName).toList();
+                List<String> gainedNames = gainedFollowers.stream().map(FollowerResponse::getName).toList();
+                emailAlert.sendSummaryEmail(userEmail, accountName, lostNames, gainedNames);
+            }
         }
 
-        if (!lostFollowers.isEmpty() || !gainedFollowers.isEmpty()) {
-            List<String> lostNames = lostFollowers.stream().map(FollowerResponse::getName).toList();
-            List<String> gainedNames = gainedFollowers.stream().map(FollowerResponse::getName).toList();
-            emailAlert.sendSummaryEmail(userEmail, accountName, lostNames, gainedNames);
-        }
+        account.setLastUpdated(LocalDateTime.now());
+        accountRepository.save(account);
 
         AnalysisHistory history = AnalysisHistory.builder()
-                .accountId(accountToSave.getAccountId())
+                .accountId(account.getAccountId())
                 .totalFollowers(currentFollowers.size())
                 .gainedCount(gainedFollowers.size())
                 .lostCount(lostFollowers.size())
