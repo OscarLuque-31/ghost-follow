@@ -22,7 +22,7 @@ public class FollowerController {
     private final FollowersService followersService;
 
     @PostMapping("/upload")
-    public ResponseEntity<AnalysisResponse> uploadList(@RequestBody MultipartFile file, @RequestParam String accountName) throws IOException {
+    public ResponseEntity<AnalysisResponse> uploadList(@RequestParam MultipartFile file, @RequestParam String accountName) throws IOException {
         String authenticatedEmail = SecurityContextHolder.getContext().getAuthentication().getName();
 
         AnalysisResponse analysisResponse = detectionService.processFollowerFile(file, accountName, authenticatedEmail);
