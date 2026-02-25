@@ -52,6 +52,7 @@ public class RelationshipService {
     private List<FollowerResponse> filterByRelationship(Map<String, String> sourceMap, Predicate<String> condition) {
         return sourceMap.entrySet().stream()
                 .filter(entry -> condition.test(entry.getKey()))
+                .filter(entry -> entry.getKey() != null && !entry.getKey().startsWith("__deleted__"))
                 .map(entry -> FollowerResponse.builder()
                         .name(entry.getKey())
                         .url(entry.getValue())
