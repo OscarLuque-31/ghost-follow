@@ -101,6 +101,9 @@ public class AuthService {
         Subscription subscription = subscriptionRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new IllegalArgumentException("No existe subscripcion para este usuario"));
 
+        boolean hasData = monitoredAccount != null
+                && monitoredAccount.getFollowerDetails() != null
+                && !monitoredAccount.getFollowerDetails().isEmpty();
 
         PlanSubscription planSubscription = PlanSubscription.builder()
                 .planType(subscription.getPlanType())
@@ -113,6 +116,7 @@ public class AuthService {
         return UserResponse.builder()
                 .instagramUserName(monitoredAccount.getInstagramAccountName())
                 .email(email)
+                .hasInitialData(hasData)
                 .subscription(planSubscription)
                 .build();
     }

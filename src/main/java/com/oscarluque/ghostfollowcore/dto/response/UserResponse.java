@@ -13,5 +13,6 @@ import lombok.NoArgsConstructor;
 public class UserResponse {
     private String instagramUserName;
     private String email;
+    private boolean hasInitialData;
     private PlanSubscription subscription;
 }
