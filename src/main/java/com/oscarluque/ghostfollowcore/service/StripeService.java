@@ -63,6 +63,7 @@ public class StripeService {
                 .setSuccessUrl(successUrl)
                 .setCancelUrl(cancelUrl)
                 .setCustomerEmail(userEmail)
+                .setAllowPromotionCodes(true)
                 .addLineItem(
                         SessionCreateParams.LineItem.builder()
                                 .setQuantity(1L)
