@@ -58,7 +58,7 @@ public class StripeService {
             throw new IllegalArgumentException("Tipo de plan inválido");
         }
 
-        SessionCreateParams params = SessionCreateParams.builder()
+        SessionCreateParams.Builder params = SessionCreateParams.builder()
                 .setMode(mode)
                 .setSuccessUrl(successUrl)
                 .setCancelUrl(cancelUrl)
@@ -69,9 +69,13 @@ public class StripeService {
                                 .setQuantity(1L)
                                 .setPrice(priceId)
                                 .build()
-                ).build();
+                );
 
-        Session session = Session.create(params);
+        if (mode == SessionCreateParams.Mode.PAYMENT) {
+            params.setCustomerCreation(SessionCreateParams.CustomerCreation.ALWAYS);
+        }
+
+        Session session = Session.create(params.build());
 
         return session.getUrl();
     }
